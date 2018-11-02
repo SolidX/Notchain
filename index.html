@@ -1,0 +1,46 @@
+<html>
+    <head>
+        <title>Notchain (PouchDB &amp; CouchDB Demo)</title>
+    </head>
+    <body>
+        <h1>Notchain</h1>
+        <h2>A Distributed Ledger That Isn't the Blockchain</h2>
+        <hr>
+        <div id="content">
+            <div>
+                Please set your username to proceed.
+                <input type="text" id="uname" />
+            </div>
+            <div>
+                <input type="button" value="--&gt;Click to Proceed&lt;--" onclick="proceed();" />
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/pouchdb@7.0.0/dist/pouchdb.min.js"></script>
+        <script type="text/javascript">
+            var localDb = new PouchDB('ledger');
+
+            localDb.get("_local/user").then(function (userInfo) {
+                console.log(userInfo);
+                document.getElementById("content").innerHTML = "Welcome, " + userInfo.name + "! <a href='ledger.html'>Let's head to the ledger!</a>";
+            }).catch(function (err) {
+                switch (err.status) {
+                    case 404:
+                        console.log("User info was not found? ");
+                        break;
+                    default:
+                        console.log(err);
+                        break;
+                }
+            });
+
+            function proceed() {
+                localDb.put({
+                    _id: "_local/user",
+                    name: document.getElementById("uname").value
+                }).then(function () {
+                    location.assign("ledger.html");
+                });
+            }
+        </script>
+    </body>
+</html>

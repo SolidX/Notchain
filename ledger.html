@@ -1,0 +1,96 @@
+<html>
+    <head>
+
+    </head>
+    <body>
+        <h1>Notchain</h1>
+        <h2>A Distributed Ledger That Isn't the Blockchain</h2>
+        <hr>
+        <div id="content">
+            <h2>Ledger</h2>
+            <div id="add">
+                <h3>Add Ledger Entries</h3>
+                <strong>Entry Amount: </strong><input type="text" id="ent_amt" />
+                <strong>Entry Description: </strong><input type="text" id="ent_desc" />
+                <input type="button" value="Submit!" onclick="addEntry();"/>
+            </div>
+            <h3>Current Ledger Entries</h3>
+            <table border="1">
+                <thead>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                    <th>Entered By</th>
+                </thead>
+                <tbody id="entries">
+                    <tr><td colspan="4"><em>There are no entries available at the moment.</em></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/pouchdb@7.0.0/dist/pouchdb.min.js"></script>
+        <script type="text/javascript">
+            var localDb = new PouchDB('ledger');
+            var remoteDb = new PouchDB('http://localhost:5984/ledger');
+
+            localDb.replicate.from(remoteDb);
+            updateTableContents();
+
+            function updateTableContents() {
+                localDb.allDocs({
+                    include_docs: true
+                }).then(function (entries) {
+                    var tbl = document.getElementById("entries");
+                    tbl.innerHTML = null;
+
+                    console.log(entries);
+                    
+                    var options = { year: 'numeric', month: 'short', day: '2-digit' };
+
+                    entries.rows.forEach(entry => {
+                        let dt = new Intl.DateTimeFormat('en-US', options).format(new Date(entry.doc.date));
+                        tbl.innerHTML += "<tr><td>" + dt + "</td><td>" + entry.doc.amount + "</td><td>" + entry.doc.desc + "</td><td>" + entry.doc.user + "</td></tr>";
+                    });
+                }).catch(function (err) {
+                    console.log(err);
+                });
+            }
+
+            function addEntry() {
+                var date = new Date();
+                var user = null;
+                var amt = Number(document.getElementById("ent_amt").value);
+                var desc = document.getElementById("ent_desc").value;
+                var entryId = null;
+
+                localDb.get("_local/user").then(function (usr) {
+                    user = usr.name;
+                    entryId = usr.name + date.valueOf().toString();
+
+                    if (!isNaN(amt) && desc.length >= 1) {
+                        localDb.put({
+                            _id: entryId,
+                            amount: amt,
+                            date: date,
+                            desc: desc,
+                            user: user
+                        }).then(function () {
+                            localDb.sync(remoteDb).on('complete', function (info){
+                                updateTableContents();
+                            }).on('error', function(err) {
+                                console.log(err);
+                            });                            
+                        }).catch(function (err) {
+                            console.log(err);
+                        });
+                    } else {
+                        //error indicator here
+                        alert("check your inputs.");
+                    }
+                }).catch(function(err) {
+                    //Never forget to check for errors.
+                    console.log(err);
+                });
+            }
+        </script>
+    </body>
+</html>
